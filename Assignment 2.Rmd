@@ -1,0 +1,68 @@
+---
+title: "Assignment 2"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+lineups <- read_csv("Lineups.csv")
+rpm <- read_csv("RPM.csv")
+
+lineups %>% inner_join(rpm, by = c("Player1" = "NAME", "SEASON" = "SEASON", "TEAM" = "TEAM")) -> player1
+player1 %>% inner_join(rpm, by = c("Player2" = "NAME", "SEASON" = "SEASON", "TEAM" = "TEAM")) -> player2
+player2 %>% inner_join(rpm, by = c("Player3" = "NAME", "SEASON" = "SEASON", "TEAM" = "TEAM")) -> player3
+player3 %>% inner_join(rpm, by = c("Player4" = "NAME", "SEASON" = "SEASON", "TEAM" = "TEAM")) -> player4
+player4 %>% inner_join(rpm, by = c("Player5" = "NAME", "SEASON" = "SEASON", "TEAM" = "TEAM")) -> lineupsrpm
+colnames(lineupsrpm)[colnames(lineupsrpm)=="RPM.x"] <- "RPM.Player1"
+colnames(lineupsrpm)[colnames(lineupsrpm)=="RPM.y"] <- "RPM.Player2"
+colnames(lineupsrpm)[colnames(lineupsrpm)=="RPM.x.x"] <- "RPM.Player3"
+colnames(lineupsrpm)[colnames(lineupsrpm)=="RPM.y.y"] <- "RPM.Player4"
+colnames(lineupsrpm)[colnames(lineupsrpm)=="RPM"] <- "RPM.Player5"
+```
+```{r}
+lineupsrpm %>% mutate(Player1OtherRPM = (lineupsrpm$RPM.Player2 + lineupsrpm$RPM.Player3 + lineupsrpm$RPM.Player4 + lineupsrpm$RPM.Player5) / 4) -> lineupsrpm
+
+lineupsrpm %>% mutate(Player2OtherRPM = (lineupsrpm$RPM.Player1 + lineupsrpm$RPM.Player3 + lineupsrpm$RPM.Player4 + lineupsrpm$RPM.Player5) / 4) -> lineupsrpm
+
+lineupsrpm %>% mutate(Player3OtherRPM = (lineupsrpm$RPM.Player2 + lineupsrpm$RPM.Player1 + lineupsrpm$RPM.Player4 + lineupsrpm$RPM.Player5) / 4) -> lineupsrpm
+
+lineupsrpm %>% mutate(Player4OtherRPM = (lineupsrpm$RPM.Player2 + lineupsrpm$RPM.Player3 + lineupsrpm$RPM.Player1 + lineupsrpm$RPM.Player5) / 4) -> lineupsrpm
+
+lineupsrpm %>% mutate(Player5OtherRPM = (lineupsrpm$RPM.Player2 + lineupsrpm$RPM.Player3 + lineupsrpm$RPM.Player4 + lineupsrpm$RPM.Player1) / 4) -> lineupsrpm
+```
+```{r}
+lineupsrpm %>% select(Player1, TEAM, SEASON, RPM.Player1, Player1OtherRPM, MIN, GP) -> player1df
+colnames(player1df)[colnames(player1df)=="Player1"] <- "Player"
+colnames(player1df)[colnames(player1df)=="RPM.Player1"] <- "RPM"
+colnames(player1df)[colnames(player1df)=="Player1OtherRPM"] <- "OtherRPM"
+
+lineupsrpm %>% select(Player2, TEAM, SEASON, RPM.Player2, Player2OtherRPM, MIN, GP) -> player2df
+colnames(player2df)[colnames(player2df)=="Player2"] <- "Player"
+colnames(player2df)[colnames(player2df)=="RPM.Player2"] <- "RPM"
+colnames(player2df)[colnames(player2df)=="Player2OtherRPM"] <- "OtherRPM"
+lineupsrpm %>% select(Player3, TEAM, SEASON, RPM.Player3, Player3OtherRPM, MIN, GP) -> player3df
+colnames(player3df)[colnames(player3df)=="Player3"] <- "Player"
+colnames(player3df)[colnames(player3df)=="RPM.Player3"] <- "RPM"
+colnames(player3df)[colnames(player3df)=="Player3OtherRPM"] <- "OtherRPM"
+
+lineupsrpm %>% select(Player4, TEAM, SEASON, RPM.Player4, Player4OtherRPM, MIN, GP) -> player4df
+colnames(player4df)[colnames(player4df)=="Player4"] <- "Player"
+colnames(player4df)[colnames(player4df)=="RPM.Player4"] <- "RPM"
+colnames(player4df)[colnames(player4df)=="Player4OtherRPM"] <- "OtherRPM"
+
+lineupsrpm %>% select(Player5, TEAM, SEASON, RPM.Player5, Player5OtherRPM, MIN, GP) -> player5df
+colnames(player5df)[colnames(player5df)=="Player5"] <- "Player"
+colnames(player5df)[colnames(player5df)=="RPM.Player5"] <- "RPM"
+colnames(player5df)[colnames(player5df)=="Player5OtherRPM"] <- "OtherRPM"
+
+player1df %>% bind_rows(player2df) %>% bind_rows(player3df) %>% bind_rows(player4df) %>% bind_rows(player5df) -> lineuprpmdf
+```
+```{r}
+lineuprpmdf %>% mutate(TotalMIN = MIN * GP) -> lineuprpmdf
+lineuprpmdf %>% mutate(WeightedRPM = TotalMIN * RPM) -> lineuprpmdf
+lineuprpmdf %>% mutate(OtherWeightedRPM = TotalMIN * OtherRPM) -> lineuprpmdf
+
+lineuprpmdf %>% group_by(Player, SEASON, TEAM) %>% summarise(OtherplayerRPM = sum(OtherWeightedRPM) / sum(TotalMIN), PlayerRPM = sum(WeightedRPM) / sum(TotalMIN)) -> lineuprpmdf
+
+lineuprpmdf %>% arrange(Player, SEASON, TEAM)
+
+lineuprpmdf %>% write_csv("rpmOrpm.csv")
